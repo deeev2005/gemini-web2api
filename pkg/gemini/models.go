@@ -324,6 +324,12 @@ func (c *Client) batchExecute(ctx context.Context, rpcid, payload string) (strin
 	req.Header.Set("Referer", geminiBaseURL+prefix+"/app")
 	req.Header.Set("X-Same-Domain", "1")
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("sec-ch-ua", `"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"`)
+	req.Header.Set("sec-ch-ua-mobile", "?0")
+	req.Header.Set("sec-ch-ua-platform", `"Windows"`)
+	req.Header.Set("Sec-Fetch-Dest", "empty")
+	req.Header.Set("Sec-Fetch-Mode", "cors")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("x-goog-ext-525001261-jspb", genericModelHeader)
 	if prefix != "" {
 		req.Header.Set("X-Goog-AuthUser", c.cfg.AuthUser)

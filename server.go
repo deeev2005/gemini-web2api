@@ -127,8 +127,9 @@ func (s *Server) handleHealthIST(w http.ResponseWriter, _ *http.Request) {
 	ist := time.FixedZone("IST", 5*3600+30*60)
 	now := time.Now().In(ist)
 	sendJSON(w, http.StatusOK, map[string]any{
-		"status":  "ok",
-		"timeIST": now.Format("02/01/2006, 03:04:05 pm"),
+		"status":        "ok",
+		"timeIST":       now.Format("02/01/2006, 03:04:05 pm"),
+		"authenticated": s.client.ImagesSupported(),
 	})
 }
 

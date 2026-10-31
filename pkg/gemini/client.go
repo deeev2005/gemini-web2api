@@ -39,7 +39,7 @@ import (
 const geminiBaseURL = "https://gemini.google.com"
 
 // userAgent mirrors a desktop Chrome UA, as the reference does.
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 // codeArtifactRe strips internal code-execution artifacts that Gemini embeds in
 // streamed text (e.g. ```python?code_reference&code_event_index=0 ... ```).
@@ -124,6 +124,15 @@ func New(cfg Config, logger *slog.Logger) (*Client, error) {
 		http: &http.Client{
 			Timeout:   time.Duration(cfg.RequestTimeout) * time.Second,
 			Transport: transport,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if strings.Contains(req.URL.Host, "sorry") || strings.Contains(req.URL.Path, "sorry") {
+					return errors.New("Google blocked the request with a bot captcha (google.com/sorry/index). Cloud datacenter IP may be flagged or cookie is invalid.")
+				}
+				if len(via) >= 10 {
+					return errors.New("stopped after 10 redirects")
+				}
+				return nil
+			},
 		},
 		log:    logger,
 		bl:     cfg.GeminiBL,
@@ -261,6 +270,12 @@ func (c *Client) fetchAppPage(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("sec-ch-ua", `"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"`)
+	req.Header.Set("sec-ch-ua-mobile", "?0")
+	req.Header.Set("sec-ch-ua-platform", `"Windows"`)
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	if cookie, _ := c.loadCookie(); cookie != "" {
 		req.Header.Set("Cookie", cookie)
 	}
@@ -366,11 +381,17 @@ func (c *Client) newRequest(ctx context.Context, body string, model *AvailableMo
 		return nil, err
 	}
 	prefix := c.accountPrefix()
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
 	req.Header.Set("Origin", geminiBaseURL)
 	req.Header.Set("Referer", geminiBaseURL+prefix+"/app")
 	req.Header.Set("X-Same-Domain", "1")
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("sec-ch-ua", `"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"`)
+	req.Header.Set("sec-ch-ua-mobile", "?0")
+	req.Header.Set("sec-ch-ua-platform", `"Windows"`)
+	req.Header.Set("Sec-Fetch-Dest", "empty")
+	req.Header.Set("Sec-Fetch-Mode", "cors")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	if prefix != "" {
 		req.Header.Set("X-Goog-AuthUser", c.cfg.AuthUser)
 	}
